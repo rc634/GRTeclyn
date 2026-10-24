@@ -6,6 +6,7 @@ EBASE = BinaryBH
 
 # We use particles for the puncture tracking
 USE_PARTICLES = TRUE
+USE_TWOPUNCTURES = TRUE
 
 AMREX_HOME ?= $(realpath ../../../amrex)
 

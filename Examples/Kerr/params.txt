@@ -1,0 +1,98 @@
+# Kerr example (single BH) -- WIP
+# Exact Kerr: Boyer-Lindquist slice in quasi-isotropic coordinates (KerrID,
+# Source/InitialData/Kerr), built with USE_TWOPUNCTURES = FALSE.
+# M = 1, a/M = 0.7: horizon at r = r_+/4 = 0.43, i.e. ~14 finest cells (dx = 1/32).
+# Grid/evolution/extraction settings are inherited from the BinaryBH fly-by
+# test, but on a full 3D grid (domain [-64,64]^3, no symmetry).
+
+amr.verbose = 1
+
+#################################################
+# Output
+# grteclyn.output_path = .
+
+# Number of level-0 time steps between outputs (coarse dt = 0.5)
+amr.check_int = 20                 # every 10 M
+amr.plot_int  = 4                  # every 2 M
+
+amr.plot_vars        = chi lapse K Theta shift1 shift2
+amr.derive_plot_vars = constraints Weyl4
+
+#################################################
+# Initial data (KerrID)
+
+kerr.mass   = 1.0
+kerr.spin   = 0.7           # dimensionless a/M along +z, |spin| < 1
+kerr.offset = 0.0 0.0 0.0   # relative to geometry.center = (64, 64, 64)
+
+#################################################
+# Grid
+
+amr.n_cell           = 64 64 64
+geometry.prob_extent = 128 128 128
+# geometry.center defaults to the domain centre (64, 64, 64)
+
+amr.max_level = 6   # dx: 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125
+
+# Regrid intervals in level steps for levels 0..max_level-1. Levels 2-5 all
+# regrid every 0.125 M; at v = 0.5 the BH moves 0.0625 M (2 finest cells)
+# between regrids.
+amr.regrid_int = 2 2 1 2 4 8
+
+tagging.threshold = 0.05
+
+# Puncture tagging: finest level covers r < finest_level_factor * m around each
+# BH, each coarser level 1.5x bigger. 1.0 (default 2.0) keeps the expensive
+# finest level small but still outside the horizon (r_H ~ 0.18-0.25).
+puncture_tagging.finest_level_factor = 1.0
+# puncture_tagging.level_separation  = 1.5
+
+# Small boxes suit a CPU. For GPUs use far larger (e.g. 128 / 32).
+amr.max_grid_size   = 32
+amr.blocking_factor = 8
+amr.n_error_buf     = 3
+
+#################################################
+# Boundaries
+
+geometry.is_periodic  = 0 0 0
+boundary.hi_condition = "SOMMERFELD_BC" "SOMMERFELD_BC" "SOMMERFELD_BC"
+boundary.lo_condition = "SOMMERFELD_BC" "SOMMERFELD_BC" "SOMMERFELD_BC"
+
+#################################################
+# Evolution
+
+# evolution.dt_multiplier = 0.25
+evolution.stop_time = 60.0     # closest approach ~ t = 25 M
+evolution.max_steps = -1
+
+# 4th order is cheaper and needs fewer ghost cells than 6th; fine for testing
+evolution.spatial_derivative_order = 4
+
+# Moving-puncture gauge
+gauge.shift_advec_coeff = 1.0
+# gauge.eta = 1.0   # ~ 1/M
+
+evolution.sigma = 1.0          # Kreiss-Oliger dissipation
+# evolution.nan_check = true
+
+#################################################
+# Weyl extraction, centred on the grid centre (= initial Kerr position).
+# NB the Schwarzschild BH starts at r = 15.6 and passes within ~10 of the
+# centre, so it crosses the r = 10 and r = 20 spheres: data there is not
+# clean wave-zone signal while a BH is near the sphere.
+
+weyl_extraction.enabled          = true
+weyl_extraction.num_radii        = 3
+weyl_extraction.radii            = 10.0 20.0 30.0
+weyl_extraction.levels           = 2    1    1     # dx = 0.5, 1, 1
+weyl_extraction.num_points_phi   = 24
+weyl_extraction.num_points_theta = 37
+weyl_extraction.num_modes = 5
+weyl_extraction.modes     = 2 0  2 1  2 2  3 2  3 3
+
+#################################################
+# Puncture tracking
+
+puncture_tracking.enabled = true
+puncture_tracking.level   = 4      # dx = 0.125
