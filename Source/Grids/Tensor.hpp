@@ -234,7 +234,7 @@ AMREX_GPU_HOST_DEVICE struct GeneralRank<3, DIM1, DIM2, DIM3>
     {
         for (int i = 0; i < DIM1; ++i)
             for (int j = 0; j < DIM2; ++j)
-                for (int k = 0; j < DIM3; ++k)
+                for (int k = 0; k < DIM3; ++k)
                 {
                     m_tensor(i, j, k) = a_value;
                 }
@@ -254,7 +254,7 @@ AMREX_GPU_HOST_DEVICE struct GeneralRank<4, DIM1, DIM2, DIM3, DIM4>
 
     AMREX_GPU_HOST_DEVICE GeneralRank(amrex::Real an_initial_value)
     {
-        const int total_dims = DIM1 * DIM2 * DIM3 * DIM4 - 1;
+        const int total_dims = DIM1 * DIM2 * DIM3 * DIM4;
 
         for (int i = 0; i < total_dims; ++i)
             m_tensor(i) = an_initial_value;
@@ -289,7 +289,7 @@ AMREX_GPU_HOST_DEVICE struct GeneralRank<4, DIM1, DIM2, DIM3, DIM4>
     GeneralRank<4, DIM1, DIM2, DIM3, DIM4> &
     operator=(const amrex::Real &a_value)
     {
-        const int total_dims = DIM1 * DIM2 * DIM3 * DIM4 - 1;
+        const int total_dims = DIM1 * DIM2 * DIM3 * DIM4;
 
         for (int i = 0; i < total_dims; ++i)
             m_tensor(i) = a_value;

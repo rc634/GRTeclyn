@@ -9,6 +9,8 @@
 #include "DimensionDefinitions.hpp"
 #include "TensorAlgebra.hpp"
 
+#include <AMReX_Algorithm.H>
+
 #include <cmath>
 
 using namespace amrex::literals;
@@ -19,17 +21,17 @@ namespace CoordinateTransformations
 // Jacobian transformation matrix
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-static Tensor::Rank2 spherical_jacobian(const amrex::Real x,
-                                        const amrex::Real y,
-                                        const amrex::Real z)
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Tensor::Rank2
+spherical_jacobian(const amrex::Real x, const amrex::Real y,
+                   const amrex::Real z)
 // NOLINTEND(bugprone-easily-swappable-parameters)
 {
     // calculate useful position quantities
     amrex::Real rho2 = x * x + y * y;
-    rho2             = std::max(rho2, 1e-12_rt);
+    rho2             = amrex::max(rho2, 1e-12_rt);
     amrex::Real rho  = std::sqrt(rho2);
     amrex::Real r2   = x * x + y * y + z * z;
-    r2               = std::max(r2, 1e-12_rt);
+    r2               = amrex::max(r2, 1e-12_rt);
     amrex::Real r    = std::sqrt(r2);
 
     // And the sines and cosines of phi and theta
@@ -53,18 +55,18 @@ static Tensor::Rank2 spherical_jacobian(const amrex::Real x,
 // Inverse Jacobian
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-static Tensor::Rank2 inverse_spherical_jacobian(const amrex::Real x,
-                                                const amrex::Real y,
-                                                const amrex::Real z)
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Tensor::Rank2
+inverse_spherical_jacobian(const amrex::Real x, const amrex::Real y,
+                           const amrex::Real z)
 // NOLINTEND(bugprone-easily-swappable-parameters)
 {
     // calculate useful position quantities
     amrex::Real rho2 = x * x + y * y;
     amrex::Real rho  = std::sqrt(rho2);
-    rho              = std::max(rho, 1e-6_rt);
+    rho              = amrex::max(rho, 1e-6_rt);
     amrex::Real r2   = x * x + y * y + z * z;
     amrex::Real r    = std::sqrt(r2);
-    r                = std::max(r, 1e-6_rt);
+    r                = amrex::max(r, 1e-6_rt);
 
     // And the sines and cosines of phi and theta
     amrex::Real cos_phi = x / rho;
@@ -88,7 +90,7 @@ static Tensor::Rank2 inverse_spherical_jacobian(const amrex::Real x,
 // coords
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-static Tensor::Sym12Rank2
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Tensor::Sym12Rank2
 spherical_to_cartesian_LL(const Tensor::Sym12Rank2 &spherical_g,
                           const amrex::Real x, const amrex::Real y,
                           const amrex::Real z)
@@ -100,12 +102,15 @@ spherical_to_cartesian_LL(const Tensor::Sym12Rank2 &spherical_g,
     Tensor::Rank2 jac = spherical_jacobian(x, y, z);
 
     // Convert the Tensor to cartesian coords
-    FOR (i, j)
+    // Sym12Rank2 stores (i, j) and (j, i) in one slot, so loop over i <= j
+    FOR2_SYM(i, j)
     {
+        amrex::Real sum = 0.0;
         FOR (k, l)
         {
-            cartesian_g(i, j) += spherical_g(k, l) * jac(k, i) * jac(l, j);
+            sum += spherical_g(k, l) * jac(k, i) * jac(l, j);
         }
+        cartesian_g(i, j) = sum;
     }
     return cartesian_g;
 }
@@ -114,7 +119,7 @@ spherical_to_cartesian_LL(const Tensor::Sym12Rank2 &spherical_g,
 // coords
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-static Tensor::Sym12Rank2
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Tensor::Sym12Rank2
 spherical_to_cartesian_UU(const Tensor::Sym12Rank2 &spherical_g_UU,
                           const amrex::Real x, const amrex::Real y,
                           const amrex::Real z)
@@ -126,13 +131,15 @@ spherical_to_cartesian_UU(const Tensor::Sym12Rank2 &spherical_g_UU,
     Tensor::Rank2 inv_jac = inverse_spherical_jacobian(x, y, z);
 
     // Convert the Tensor to cartesian coords
-    FOR (i, j)
+    // Sym12Rank2 stores (i, j) and (j, i) in one slot, so loop over i <= j
+    FOR2_SYM(i, j)
     {
+        amrex::Real sum = 0.0;
         FOR (k, l)
         {
-            cartesian_g_UU(i, j) +=
-                spherical_g_UU(k, l) * inv_jac(i, k) * inv_jac(j, l);
+            sum += spherical_g_UU(k, l) * inv_jac(i, k) * inv_jac(j, l);
         }
+        cartesian_g_UU(i, j) = sum;
     }
     return cartesian_g_UU;
 }
@@ -141,7 +148,7 @@ spherical_to_cartesian_UU(const Tensor::Sym12Rank2 &spherical_g_UU,
 // coords
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-static Tensor::Sym12Rank2
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Tensor::Sym12Rank2
 cartesian_to_spherical_LL(const Tensor::Sym12Rank2 &cartesian_g,
                           const amrex::Real x, const amrex::Real y,
                           const amrex::Real z)
@@ -153,13 +160,15 @@ cartesian_to_spherical_LL(const Tensor::Sym12Rank2 &cartesian_g,
     Tensor::Rank2 inv_jac = inverse_spherical_jacobian(x, y, z);
 
     // Convert the Tensor to spherical coords
-    FOR (i, j)
+    // Sym12Rank2 stores (i, j) and (j, i) in one slot, so loop over i <= j
+    FOR2_SYM(i, j)
     {
+        amrex::Real sum = 0.0;
         FOR (k, l)
         {
-            spherical_g(i, j) +=
-                cartesian_g(k, l) * inv_jac(k, i) * inv_jac(l, j);
+            sum += cartesian_g(k, l) * inv_jac(k, i) * inv_jac(l, j);
         }
+        spherical_g(i, j) = sum;
     }
     return spherical_g;
 }
@@ -168,7 +177,7 @@ cartesian_to_spherical_LL(const Tensor::Sym12Rank2 &cartesian_g,
 // coords
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-static Tensor::Sym12Rank2
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Tensor::Sym12Rank2
 cartesian_to_spherical_UU(const Tensor::Sym12Rank2 &cartesian_g_UU,
                           amrex::Real x, amrex::Real y, amrex::Real z)
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -179,13 +188,15 @@ cartesian_to_spherical_UU(const Tensor::Sym12Rank2 &cartesian_g_UU,
     Tensor::Rank2 jac = spherical_jacobian(x, y, z);
 
     // Convert the Tensor to spherical coords
-    FOR (i, j)
+    // Sym12Rank2 stores (i, j) and (j, i) in one slot, so loop over i <= j
+    FOR2_SYM(i, j)
     {
+        amrex::Real sum = 0.0;
         FOR (k, l)
         {
-            spherical_g_UU(i, j) +=
-                cartesian_g_UU(k, l) * jac(i, k) * jac(j, l);
+            sum += cartesian_g_UU(k, l) * jac(i, k) * jac(j, l);
         }
+        spherical_g_UU(i, j) = sum;
     }
     return spherical_g_UU;
 }
@@ -194,7 +205,8 @@ cartesian_to_spherical_UU(const Tensor::Sym12Rank2 &cartesian_g_UU,
 // coords
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-Tensor::Rank1 spherical_to_cartesian_U(const Tensor::Rank1 &spherical_v_U,
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Tensor::Rank1
+spherical_to_cartesian_U(const Tensor::Rank1 &spherical_v_U,
                                        amrex::Real x, amrex::Real y,
                                        amrex::Real z)
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -219,7 +231,8 @@ Tensor::Rank1 spherical_to_cartesian_U(const Tensor::Rank1 &spherical_v_U,
 // coords
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-Tensor::Rank1 spherical_to_cartesian_L(const Tensor::Rank1 &spherical_v_L,
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Tensor::Rank1
+spherical_to_cartesian_L(const Tensor::Rank1 &spherical_v_L,
                                        amrex::Real x, amrex::Real y,
                                        amrex::Real z)
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -244,7 +257,8 @@ Tensor::Rank1 spherical_to_cartesian_L(const Tensor::Rank1 &spherical_v_L,
 // coords
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-Tensor::Rank1 cartesian_to_spherical_U(const Tensor::Rank1 &cartesian_v_U,
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Tensor::Rank1
+cartesian_to_spherical_U(const Tensor::Rank1 &cartesian_v_U,
                                        amrex::Real x, amrex::Real y,
                                        amrex::Real z)
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -269,7 +283,8 @@ Tensor::Rank1 cartesian_to_spherical_U(const Tensor::Rank1 &cartesian_v_U,
 // coords
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-Tensor::Rank1 cartesian_to_spherical_L(const Tensor::Rank1 &cartesian_v_L,
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Tensor::Rank1
+cartesian_to_spherical_L(const Tensor::Rank1 &cartesian_v_L,
                                        amrex::Real x, amrex::Real y,
                                        amrex::Real z)
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -291,7 +306,8 @@ Tensor::Rank1 cartesian_to_spherical_L(const Tensor::Rank1 &cartesian_v_L,
 }
 
 // The area element of a sphere
-amrex::Real area_element_sphere(const Tensor::Sym12Rank2 &spherical_g)
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real
+area_element_sphere(const Tensor::Sym12Rank2 &spherical_g)
 {
     return std::sqrt(spherical_g(1, 1) * spherical_g(2, 2) -
                      spherical_g(1, 2) * spherical_g(2, 1));

@@ -144,6 +144,59 @@ void run_coordinate_transformations_test()
         check_tensor(Mij_cart_UU_check, Mij_cart_UU,
                      "spherical_to_cartesian_UU");
 
+        // Test tensor transformations with a non-diagonal tensor. The flat
+        // metric above has zero off-diagonal components in both coordinate
+        // systems, so it cannot catch errors in those components. The
+        // reference is a direct contraction into full-storage Rank2 tensors.
+        Tensor::Sym12Rank2 Tij{};
+        Tij(0, 0) = 1.3;
+        Tij(0, 1) = -0.4;
+        Tij(0, 2) = 0.7;
+        Tij(1, 1) = 2.1;
+        Tij(1, 2) = 0.25;
+        Tij(2, 2) = 0.9;
+
+        Tensor::Rank2 Tij_LL_cart_ref{0.};
+        Tensor::Rank2 Tij_UU_cart_ref{0.};
+        Tensor::Rank2 Tij_LL_spher_ref{0.};
+        Tensor::Rank2 Tij_UU_spher_ref{0.};
+        FOR (i, j, k, l)
+        {
+            Tij_LL_cart_ref(i, j) += Tij(k, l) * jac(k, i) * jac(l, j);
+            Tij_UU_cart_ref(i, j) += Tij(k, l) * inv_jac(i, k) * inv_jac(j, l);
+            Tij_LL_spher_ref(i, j) += Tij(k, l) * inv_jac(k, i) * inv_jac(l, j);
+            Tij_UU_spher_ref(i, j) += Tij(k, l) * jac(i, k) * jac(j, l);
+        }
+
+        auto to_rank2 = [](const Tensor::Sym12Rank2 &a_sym)
+        {
+            Tensor::Rank2 full{};
+            FOR (i, j)
+            {
+                full(i, j) = a_sym(i, j);
+            }
+            return full;
+        };
+
+        check_tensor(to_rank2(spherical_to_cartesian_LL(Tij, x, y, z)),
+                     Tij_LL_cart_ref, "spherical_to_cartesian_LL non-diagonal");
+        check_tensor(to_rank2(spherical_to_cartesian_UU(Tij, x, y, z)),
+                     Tij_UU_cart_ref, "spherical_to_cartesian_UU non-diagonal");
+        check_tensor(to_rank2(cartesian_to_spherical_LL(Tij, x, y, z)),
+                     Tij_LL_spher_ref,
+                     "cartesian_to_spherical_LL non-diagonal");
+        check_tensor(to_rank2(cartesian_to_spherical_UU(Tij, x, y, z)),
+                     Tij_UU_spher_ref,
+                     "cartesian_to_spherical_UU non-diagonal");
+
+        // Round trips must return the input
+        check_tensor(cartesian_to_spherical_LL(
+                         spherical_to_cartesian_LL(Tij, x, y, z), x, y, z),
+                     Tij, "LL round trip");
+        check_tensor(cartesian_to_spherical_UU(
+                         spherical_to_cartesian_UU(Tij, x, y, z), x, y, z),
+                     Tij, "UU round trip");
+
         // Test vector transformations
         Tensor::Rank1 si_cart{};
         si_cart(0) = x / r;

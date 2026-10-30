@@ -53,7 +53,8 @@ class Constraints
     // ...abs_terms stores the absolute value of the individual terms in the
     // conformally decomposed expressions which can be used in to normalize
     // the constraint violations
-    // Any zero-length Interval or negative var is not calculated
+    // Exactly one of a_c_Ham and a_c_Ham_abs_terms must be non-negative (a
+    // negative one is not calculated); a zero-length Interval is not calculated
     // If a positive interval is passed for one of a_c_Moms or
     // a_c_moms_abs_terms then it must have length consistent with
     // s_calc_mom_norm

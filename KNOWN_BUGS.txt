@@ -1,0 +1,176 @@
+Bugs found in GRTeclyn shared code (review of Source/Maths, Source/Grids/Tensor.hpp
+and Source/CCZ4/Constraints)
+==================================================================================
+
+Code reviewed at upstream commit 8d6de53e (branch "kerr"; Source/ files unmodified).
+Each bug was found by reading the code. Bugs 1, 3 and 4 were also reproduced with a
+standalone test that compiles the real headers and compares each function with an
+independent reference calculation.
+
+Summary
+-------
+  1. SERIOUS: symmetric tensor coordinate transforms give twice the correct
+     off-diagonal components
+  2. CoordinateTransformations.hpp cannot be used from GPU code, and may cause
+     duplicate-symbol link errors
+  3. Tensor::Rank3::operator=(Real) never terminates (wrong loop condition)
+  4. Tensor::Rank4 scalar constructor / operator= skip the last element
+  5. Constraints::compute_mf ignores the "|Mom| only" option and aborts if it is used
+  6. Runs with weyl_extraction.enabled = false abort at the first regrid
+  7. Restarts duplicate rows of punctures.dat when writeout_level < level
+
+None of these affect current evolutions (CCZ4 RHS, constraints with default options,
+Weyl4 extraction, puncture tracking). Bug 1 does affect anything that transforms a
+non-diagonal tensor, e.g. porting KerrBHInitialData (Kerr's K_ij is purely
+off-diagonal in spherical coordinates: K_r_phi, K_theta_phi).
+
+
+1. Symmetric tensor transforms give twice the correct off-diagonal components  [SERIOUS]
+----------------------------------------------------------------------------------------
+File:      Source/Maths/CoordinateTransformations.hpp
+Functions: spherical_to_cartesian_LL  (line 107)
+           spherical_to_cartesian_UU  (line 133)
+           cartesian_to_spherical_LL  (line 160)
+           cartesian_to_spherical_UU  (line 186)
+
+Each function returns a Tensor::Sym12Rank2. That type stores only the 6 unique
+components, so (i,j) and (j,i) refer to the same storage slot. The functions
+accumulate with += over all 9 (i,j) pairs:
+
+    FOR (i, j)
+        FOR (k, l)
+            cartesian_g(i, j) += spherical_g(k, l) * jac(k, i) * jac(l, j);
+
+So each off-diagonal component receives its contribution twice. Diagonal
+components are correct.
+
+Reproduced with a generic symmetric tensor at (x,y,z) = (0.37, -0.81, 0.52):
+    spherical_to_cartesian_LL(0,1)  got -7.338488836e-01  want -3.669244416e-01
+    cartesian_to_spherical_UU(1,2)  got -2.512696472e-01  want -1.256348239e-01
+All 12 off-diagonal checks are wrong by exactly a factor of 2. A round trip
+sph -> cart -> sph does not return the input.
+
+Why the existing test misses it: Tests/CoordinateTransformationsTest only
+transforms the flat metric. Its off-diagonal components are zero in both
+coordinate systems, and 2 x 0 = 0.
+
+Fix: loop over i <= j only (FOR2_SYM), or accumulate into a local scalar and
+assign once. Add a test case with a non-diagonal tensor.
+
+
+2. CoordinateTransformations.hpp: not GPU-callable; possible link errors
+------------------------------------------------------------------------
+File: Source/Maths/CoordinateTransformations.hpp
+
+(a) No function is marked AMREX_GPU_HOST_DEVICE. Calling any of them from device
+    code (e.g. an initial-data operator() in a ParallelFor) works in CPU builds
+    but fails to compile with USE_CUDA / USE_HIP / USE_SYCL.
+
+(b) spherical_to_cartesian_U (197), spherical_to_cartesian_L (222),
+    cartesian_to_spherical_U (247), cartesian_to_spherical_L (272) and
+    area_element_sphere (294) are non-inline, non-static functions defined in a
+    header. Including the header from two or more .cpp files gives
+    "duplicate symbol" link errors. The other functions are `static` (one copy per
+    translation unit). This does not trigger today, because only the unused
+    KerrBHInitialData.hpp and the unit test include the header.
+
+Fix: mark every function AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE, which fixes
+both (a) and (b).
+
+
+3. Tensor::Rank3::operator=(amrex::Real) never terminates
+---------------------------------------------------------
+File: Source/Grids/Tensor.hpp, line 237
+
+    for (int k = 0; j < DIM3; ++k)      // condition should be k < DIM3
+
+The inner loop tests j instead of k, so k keeps growing and the code writes past
+the end of the array. Any `rank3_tensor = value;` would crash or corrupt memory.
+No current use was found. The scalar constructor Rank3(value) is correct.
+
+Fix: `k < DIM3`.
+
+
+4. Tensor::Rank4 scalar constructor and operator= skip the last element
+-----------------------------------------------------------------------
+File: Source/Grids/Tensor.hpp, GeneralRank<4, ...> (lines ~257-260 and ~292-295)
+
+    const int total_dims = DIM1 * DIM2 * DIM3 * DIM4 - 1;
+    for (int i = 0; i < total_dims; ++i) ...
+
+The "- 1" together with "<" leaves the final element unset. Reproduced:
+Rank4(1.0) leaves element (2,2,2,2) at 0. With operator=, that element keeps its
+old value. The only current use is TensorAlgebra::epsilon4D(), via
+SpacetimeRank4(0.), where the final element should be 0 anyway, so there is no
+current effect.
+
+Fix: drop the "- 1".
+
+
+5. Constraints::compute_mf ignores the "|Mom| only" option
+----------------------------------------------------------
+File: Source/CCZ4/Constraints.impl.hpp, line 223 (with the assert at line 40)
+
+    Interval imom = Interval(dcomp + 1, dcomp + AMREX_SPACEDIM);   // always 3 components
+
+Constraints::set_up(state_index, true) registers a 2-component derived variable
+("Ham", "Mom"), but compute_mf always passes a 3-component Mom interval. The
+constructor's AMREX_ALWAYS_ASSERT(moms_interval.size() == (s_calc_mom_norm ? 1 : 3))
+then fails and the run aborts. The default set_up(state_index) (Mom1, Mom2, Mom3)
+is unaffected.
+
+Fix: use length (s_calc_mom_norm ? 1 : GR_SPACEDIM) for imom. Also use GR_SPACEDIM
+rather than AMREX_SPACEDIM here, to match the physics code (the two differ only in
+the 2D "cartoon" mode).
+
+Minor, related: the constructor comment says a negative Ham index means "not
+calculated", but the assert requires exactly one of Ham / Ham_abs_terms.
+
+
+6. Runs with weyl_extraction.enabled = false abort at the first regrid
+---------------------------------------------------------------------
+File: Source/ParticleInterpolator/SphericalExtractionParameters.hpp, fill_params()
+
+check_params() returns before queryAdd("center", ...) when extraction is disabled,
+but fill_params() calls get("center", center) before checking enabled, so the get
+fails (amrex::Abort in ParmParse) unless weyl_extraction.center is set by hand.
+tag_cells calls fill_params() for the ExtractionTagger on every regrid (BinaryBH,
+KerrBinary). Found on the kerrbin branch with weyl_extraction.enabled = false.
+
+Fix: get("center") after the enabled check (the tagger needs no centre without radii).
+
+7. Restarts duplicate rows of punctures.dat when writeout_level < level
+-----------------------------------------------------------------------
+File: Source/BlackHoles/PunctureTracker.impl.hpp, track()
+
+SmallDataIO removes a restarted run's later rows only if its first write is within
+its dt of the restart time. track() passes the tracking level's dt, but with
+puncture_tracking.writeout_level below puncture_tracking.level it writes only every
+writeout-level step, so the first write after a restart is outside that window: the
+old rows stay and the redone ones are appended (times go backwards in the file).
+Found with KerrBinary (level 4, writeout_level 0), restarting from a checkpoint.
+
+Fix: the first write of a run passes max(dt, time - restart_time) as SmallDataIO's dt.
+
+Checked and found correct
+-------------------------
+These were all checked against independent calculations:
+  - spherical_jacobian, inverse_spherical_jacobian (vs finite differences of the
+    coordinate maps)
+  - vector transforms *_U / *_L, both directions (full-storage Rank1, no doubling)
+  - compute_determinant(_sym), compute_inverse(_sym)  (M * M^-1 = I)
+  - compute_trace, make_trace_free, raise_all / lower_all, compute_dot_product
+  - epsilon() and epsilon4D()  (vs permutation parity, all entries)
+  - compute_christoffel  (vs 1/2 g^il (d_j g_lk + d_k g_lj - d_l g_jk) for a
+    non-trivial metric field)
+  - SphericalHarmonics::spin_Y_lm  (closed forms of 0Y00, 0Y10 and -2Y2m for all m;
+    s = -2 harmonics orthonormal up to l = 4 to 5e-14)
+  - Combinatorics::factorial, n_choose_r
+  - Constraints: Ham = R + 2/3 K^2 - A_ij A^ij - 2 Lambda and
+    Mom_i = D~^j A~_ij - 2/3 d_i K - 3/(2 chi) A~_i^j d_j chi, checked line by line,
+    including the index conventions of d1_sym_tensor and the Christoffel symbols.
+    compute_ricci removes the evolved Gamma^i (dZ_coeff = 0), so Ham is the pure
+    metric Hamiltonian constraint.
+  - Every other place that accumulates into a tensor in Source/CCZ4 and
+    Source/Matter (Ricci, A_UU, Weyl4 E/B, ...) writes to full-storage Rank2
+    tensors, so the bug 1 pattern does not occur there.

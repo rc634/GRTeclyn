@@ -23,6 +23,8 @@
 #include <AMReX_ParmParse.H>
 #include <AMReX_TracerParticle_mod_K.H> // for linear_interpolation
 
+#include <algorithm>
+
 void puncture_tracker_params_t::check_params()
 {
     GRParmParse puncture_tracking_pp("puncture_tracking");
@@ -400,7 +402,13 @@ void PunctureTracker<num_punctures>::track(amrex::Real a_time, amrex::Real a_dt,
     if (a_write_punctures && !m_params.disable_writeout)
     {
         bool first_step = false;
-        SmallDataIO punctures_file(m_params.full_filename, a_dt, a_time,
+        // SmallDataIO removes the rows a restart redoes only within its dt of
+        // the restart time, and writes may be several a_dt apart
+        // (writeout_level), so the first write passes the time since then
+        const amrex::Real io_dt =
+            m_first_write ? std::max(a_dt, a_time - m_restart_time) : a_dt;
+        m_first_write = false;
+        SmallDataIO punctures_file(m_params.full_filename, io_dt, a_time,
                                    m_restart_time, SmallDataIO::APPEND,
                                    first_step);
 

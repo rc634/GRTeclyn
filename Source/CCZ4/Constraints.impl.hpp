@@ -37,7 +37,8 @@ Constraints::Constraints(amrex::Real dx, int a_c_Ham, const Interval &a_c_Moms,
         (a_c_Moms.size() > 0) ? a_c_Moms : a_c_Moms_abs_terms;
     if (moms_interval.size() > 0)
     {
-        AMREX_ALWAYS_ASSERT(moms_interval.size() == (s_calc_mom_norm ? 1 : 3));
+        AMREX_ALWAYS_ASSERT(moms_interval.size() ==
+                            (s_calc_mom_norm ? 1 : GR_SPACEDIM));
     }
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -220,7 +221,8 @@ void Constraints::compute_mf(amrex::MultiFab &out_mf, int dcomp, int ncomp,
     const auto &out_arrays = out_mf.arrays();
     const auto &src_arrays = src_mf.const_arrays();
     int iham               = dcomp;
-    Interval imom          = Interval(dcomp + 1, dcomp + AMREX_SPACEDIM);
+    const int num_moms     = s_calc_mom_norm ? 1 : GR_SPACEDIM;
+    Interval imom          = Interval(dcomp + 1, dcomp + num_moms);
     Constraints constraints(geomdata.CellSize(0), iham, imom);
 
     amrex::ParallelFor(

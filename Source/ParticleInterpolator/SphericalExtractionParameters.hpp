@@ -246,11 +246,11 @@ struct spherical_extraction_params_t : surface_extraction_params_t
         GRParmParse extraction_pp(m_param_scope);
 
         extraction_pp.get("enabled", enabled);
-        extraction_pp.get("center", center);
         if (!enabled)
         {
             return;
         }
+        extraction_pp.get("center", center);
 
         extraction_pp.get("num_radii", num_extraction_radii());
 

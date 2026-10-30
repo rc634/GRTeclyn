@@ -55,6 +55,7 @@ class PunctureTracker : public amrex::ParticleContainer<AMREX_SPACEDIM, 1>
     bool m_started{false};
 
     amrex::Real m_restart_time{0.0};
+    bool m_first_write{true}; // of this run (removes a restart's later rows)
 
   public:
     //! The constructor
