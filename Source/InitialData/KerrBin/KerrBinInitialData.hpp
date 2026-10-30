@@ -42,11 +42,14 @@
 //!
 //! Gauge: pre-collapsed lapse sqrt(chi), zero shift and B^i, Theta = 0.
 //!
-//! Parameters (prefix "kerrbin"):
-//!   kerrbin.kid_file   path of the .kid file (relative to the run directory)
-//!   kerrbin.only_A     true: hole A alone, its exact slice everywhere (no B,
-//!                      no CTT solution), as a control run for A. B's puncture
-//!                      is put on A's, since BHAmr tracks two (default false)
+//! Parameters:
+//!   use_kerrbin        the initial data type. true (default): the .kid
+//!                      file's solution, both holes. false: exact Kerr, hole
+//!                      A of the .kid file alone with its exact slice
+//!                      everywhere (no B, no CTT solution), e.g. a control run
+//!                      for A; B's puncture is put on A's (BHAmr tracks two)
+//!   kerrbin.kid_file   path of the .kid file (relative to the run directory),
+//!                      read in both cases
 class KerrBinInitialData
 {
   public:
@@ -54,6 +57,8 @@ class KerrBinInitialData
 
     static void check_params()
     {
+        bool use_kerrbin = true;
+        GRParmParse().queryAdd("use_kerrbin", use_kerrbin);
         GRParmParse pp("kerrbin");
         std::string path;
         pp.get("kid_file", path);
@@ -171,12 +176,12 @@ class KerrBinInitialData
   private:
     static inline std::unique_ptr<const BinaryEvaluator> s_evaluator;
 
+    //! use_kerrbin = false
     static bool only_A()
     {
-        bool only_A = false;
-        GRParmParse pp("kerrbin");
-        pp.query("only_A", only_A);
-        return only_A;
+        bool use_kerrbin = true;
+        GRParmParse().query("use_kerrbin", use_kerrbin);
+        return !use_kerrbin;
     }
 
     //! Hole A alone in the user frame (a HoleID's vectors are in the solver
@@ -278,8 +283,8 @@ class KerrBinInitialData
         }
         if (only_A())
         {
-            amrex::Print() << "  kerrbin.only_A: hole A alone, its exact "
-                              "slice everywhere\n";
+            amrex::Print() << "  use_kerrbin = false: exact Kerr, hole A "
+                              "alone with its exact slice everywhere\n";
         }
     }
 };

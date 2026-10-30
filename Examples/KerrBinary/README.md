@@ -36,7 +36,8 @@ cd runs/leo_kerr && sbatch ../leonardo.slurm      # Leonardo: 1 node, 4 A100
 directory. The `.kid` frame (the frame of kerrbin's parameter file) has its
 origin at `geometry.center`. The puncture tracker starts from the hole
 positions in the file, and puncture tagging uses the bare masses.
-`kerrbin.only_A = true` evolves hole A of the file alone, with its exact slice
+`use_kerrbin` sets the initial data type: `true` (default) the file's binary
+solution, `false` exact Kerr, hole A of the file alone with its exact slice
 everywhere (`runs/leo_kerr`, the control run of `runs/leo_flyby`).
 
 `sahf.*` parameters (see `runs/leo_flyby/params.txt`) run `sahf.n` horizon

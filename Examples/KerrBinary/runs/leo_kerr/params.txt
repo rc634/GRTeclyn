@@ -1,8 +1,8 @@
-# KerrBinary leo_kerr: hole A of runs/leo_flyby alone (Kerr M = 1, a/M = 0.95 along +z, at the
-# origin), its exact slice everywhere (kerrbin.only_A: the same .kid, B and the CTT solution
-# ignored), on the same grid, gauge and finders as leo_flyby. Tests the code on GPUs and
-# measures A on its own: horizon size once the gauge settles, mass and spin drift at dx 1/64,
-# junk radiation, and the speed to scale leo_flyby's run time from.
+# KerrBinary leo_kerr: exact Kerr, hole A of runs/leo_flyby alone (M = 1, a/M = 0.95 along
+# +z, at the origin) with its exact slice everywhere (use_kerrbin = false: the same .kid,
+# B and the CTT solution ignored), on the same grid, gauge and finders as leo_flyby. Tests
+# the code on GPUs and measures A on its own: horizon size once the gauge settles, mass and
+# spin drift at dx 1/64, junk radiation, and the speed to scale leo_flyby's run time from.
 # Cells across A's horizon (diameter / dx): ~20 at t = 0 (r 0.156), ~35 by t ~ 6 (r 0.27).
 #
 # Leonardo: cd runs/leo_kerr && sbatch ../leonardo.slurm  (1 node, 4 A100), ~1-3 h.
@@ -17,33 +17,34 @@ amrex.use_gpu_aware_mpi = 1
 
 # amr.restart = checkpoints/chk00100   # continue from t = 100
 
-# Number of level-0 time steps between outputs (coarse dt = 0.5)
-amr.check_int = 40                 # every 20 M, ~5 GB each
-amr.plot_int  = 8                  # every 4 M, ~3 GB each
+# Number of level-0 time steps between outputs (coarse dt = 1)
+amr.check_int = 40                 # every 40 M, ~11 GB each
+amr.plot_int  = 10                 # every 10 M, ~5.5 GB each
 
 amr.plot_vars        = chi lapse K Theta shift1 shift2
 amr.derive_plot_vars = constraints Weyl4
 
 #################################################
-# Initial data (kerrbin)
+# Initial data type: true = the kerrbin binary solution of kerrbin.kid_file;
+# false = exact Kerr, hole A of that file alone (B's tracked puncture sits on A)
 
-kerrbin.kid_file = initial_data.kid   # relative to the run directory (the same file as leo_flyby)
-kerrbin.only_A   = true               # A alone; the tracker's second puncture sits on A
+use_kerrbin      = false
+kerrbin.kid_file = initial_data.kid   # the same file as leo_flyby: A's parameters
 
 #################################################
 # Grid
 
+# Outer boundary 512 from A: echoes of the initial gauge pulse reach r = 160 only after
+# t ~ 600. dx 4 only beyond r ~ 290, outside all extraction spheres.
 amr.n_cell           = 256 256 128
-geometry.prob_extent = 512 512 256
-geometry.center      = 256 256 0   # A, the .kid origin, on the symmetry plane
+geometry.prob_extent = 1024 1024 512
+geometry.center      = 512 512 0   # A, the .kid origin, on the symmetry plane
 
-# Outer boundary 256 from A: reflections reach the r = 100 extraction only after t ~ 290.
-# Coarsest dx 2 costs little on GPUs (the finest levels are ~95% of the work).
-amr.max_level = 7   # dx: 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625
+amr.max_level = 8   # dx: 4, 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625
 
-# Regrid intervals in level steps for levels 0..6: levels 2-6 every 0.125 M (B peaks at
-# v ~ 0.55, moving 0.07 M = 4.4 finest cells between regrids, inside the 4-cell buffers).
-amr.regrid_int = 4 4 1 2 4 8 16
+# Regrid intervals in level steps for levels 0..7: levels 3-7 every 0.125 M (B peaks at
+# v ~ 0.55, moving 0.07 M = 4.4 finest cells between regrids, inside the 4-cell buffers)
+amr.regrid_int = 2 4 4 1 2 4 8 16
 
 tagging.threshold = 0.05
 
@@ -70,7 +71,7 @@ boundary.lo_condition = "SOMMERFELD_BC" "SOMMERFELD_BC" "REFLECTIVE_BC"   # z = 
 # Evolution
 
 # evolution.dt_multiplier = 0.25
-evolution.stop_time = 100.0    # gauge settled, junk radiation past all extraction radii
+evolution.stop_time = 100.0    # gauge settled; junk radiation past r = 40, 80
 evolution.max_steps = -1
 
 evolution.spatial_derivative_order = 4
@@ -82,13 +83,13 @@ gauge.shift_advec_coeff = 1.0
 evolution.sigma = 1.0          # Kreiss-Oliger dissipation
 
 #################################################
-# Weyl extraction, centred on geometry.center (A).
-# all radii on level 1 (dx 1), as leo_flyby: A's junk radiation.
+# Weyl extraction, centred on geometry.center (A), all radii on level 2 (dx 1), as
+# leo_flyby: A's junk radiation
 
 weyl_extraction.enabled          = true
 weyl_extraction.num_radii        = 4
-weyl_extraction.radii            = 40.0 60.0 80.0 100.0
-weyl_extraction.levels           = 1    1    1    1
+weyl_extraction.radii            = 40.0 80.0 120.0 160.0
+weyl_extraction.levels           = 2    2    2     2
 weyl_extraction.num_points_phi   = 24
 weyl_extraction.num_points_theta = 37
 weyl_extraction.num_modes = 12   # l = 2..4, m >= 0 (z -> -z symmetry: m < 0 follow)
@@ -98,7 +99,7 @@ weyl_extraction.modes     = 2 0  2 1  2 2  3 0  3 1  3 2  3 3  4 0  4 1  4 2  4 
 # Puncture tracking
 
 puncture_tracking.enabled = true
-puncture_tracking.level   = 4      # dx = 0.125
+puncture_tracking.level   = 5      # dx = 0.125
 
 #################################################
 # SAHF horizon finders on every time step of sahf.level, each from its last solution,
@@ -106,9 +107,9 @@ puncture_tracking.level   = 4      # dx = 0.125
 # centre. A restart starts each from its last row in sahf_output/horizon_<id>.dat.
 
 sahf.n     = 1
-sahf.level = 2                  # dt = 0.125
-sahf.x     = 256.0              # A
-sahf.y     = 256.0
+sahf.level = 3                  # dt = 0.125
+sahf.x     = 512.0              # A
+sahf.y     = 512.0
 sahf.z     = 0.0                # on the symmetry plane
 sahf.f0    = 0.6                # initial and reset radius, outside the horizon
 sahf.t0    = 0.0
