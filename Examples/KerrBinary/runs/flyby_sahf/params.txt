@@ -1,0 +1,130 @@
+# KerrBinary flyby_sahf: retrograde flyby of a Schwarzschild hole B (M = 0.5) past a
+# near-extremal Kerr hole A (M = 1, a/M = 0.95 along +z, at rest at the origin), both in A's
+# equatorial plane, with SAHF horizon finders on both. kerrbin data: initial_data.kid, solved
+# from kerrbin.par (both next to this file; p, q = 32, m = 24, pass tolerance 1e-10).
+# Run from this directory with ./run.sh (rank 0's output also goes to pout.0).
+#
+# B starts at (-24, 0, 0) from A with v = (0.27, 0.28, 0): L_z < 0, against A's frame dragging.
+# The same start with a/M = 0.9 (runs/flyby) swept B ~320 deg about A, closest coordinate
+# separation 9.5 at t ~ 100. The z = 0 plane is a symmetry plane: reflective lower z boundary,
+# half the domain in z.
+
+amr.verbose = 1
+
+#################################################
+# Output
+# grteclyn.output_path = .
+
+# amr.restart = checkpoints/chk00100   # to continue from t = 50
+
+# Number of level-0 time steps between outputs (coarse dt = 0.5)
+amr.check_int = 20                 # every 10 M
+amr.plot_int  = 4                  # every 2 M
+
+amr.plot_vars        = chi lapse K Theta shift1 shift2
+amr.derive_plot_vars = constraints Weyl4
+
+#################################################
+# Initial data (kerrbin)
+
+kerrbin.kid_file = initial_data.kid   # relative to the run directory
+
+#################################################
+# Grid
+
+amr.n_cell           = 128 128 64
+geometry.prob_extent = 256 256 128
+geometry.center      = 128 128 0   # A, the .kid origin, on the symmetry plane
+
+# A's horizon (a/M = 0.95) has coordinate radius sqrt(M^2 - a^2)/2 = 0.16 in
+# kerrbin's quasi-isotropic coordinates at t = 0: only ~5 finest cells at max_level 6
+# (its mass and spin drifted by 0.5% in the first M). Use max_level 7 (dx 1/64) on GPUs.
+amr.max_level = 6   # dx: 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125
+
+# Regrid intervals in level steps for levels 0..max_level-1. Levels 2-5 all
+# regrid every 0.125 M; B peaks at v ~ 0.55 near periapsis, moving 0.07 M
+# (2 finest cells) between regrids.
+amr.regrid_int = 2 2 1 2 4 8
+
+tagging.threshold = 0.05
+
+# Puncture tagging: finest level covers r < finest_level_factor * m around each
+# BH, each coarser level 1.5x bigger. 1.0 (as runs/flyby) for speed: B's finest level
+# r < 0.5 plus buffer cells and box rounding (its horizon 0.24 -> 0.27 by t = 0.6, still
+# growing: watch H2's r_mean). 1.5 is ~2-3x slower.
+puncture_tagging.finest_level_factor = 1.0
+# puncture_tagging.level_separation  = 1.5
+
+# Small boxes suit a CPU. For GPUs use far larger (e.g. 128 / 32).
+amr.max_grid_size   = 32
+amr.blocking_factor = 8
+amr.n_error_buf     = 3
+
+# skip rebuilding (and refilling from kerrbin) levels whose grids did not change
+amr.use_efficient_regrid = 1
+
+#################################################
+# Boundaries
+
+geometry.is_periodic  = 0 0 0
+boundary.hi_condition = "SOMMERFELD_BC" "SOMMERFELD_BC" "SOMMERFELD_BC"
+boundary.lo_condition = "SOMMERFELD_BC" "SOMMERFELD_BC" "REFLECTIVE_BC"   # z = 0 symmetry plane
+
+#################################################
+# Evolution
+
+# evolution.dt_multiplier = 0.25
+evolution.stop_time = 250.0    # periapsis ~ t = 100; its burst passes r = 100 by t ~ 220
+evolution.max_steps = -1
+
+# 4th order is cheaper and needs fewer ghost cells than 6th; fine for testing
+evolution.spatial_derivative_order = 4
+
+# Moving-puncture gauge
+gauge.shift_advec_coeff = 1.0
+# gauge.eta = 1.0   # ~ 1/M
+
+evolution.sigma = 1.0          # Kreiss-Oliger dissipation
+# evolution.nan_check = true
+
+#################################################
+# Weyl extraction, centred on geometry.center (A's initial position; the spheres
+# straddle the symmetry plane, the interpolator reflects). Outer boundary at 128.
+# 80 and 100 on level 0 (dx = 2: ~30 points per wavelength for l = 2, ~15 for l = 4)
+# so that level 1 (dx = 1) only has to reach r ~ 60.
+
+weyl_extraction.enabled          = true
+weyl_extraction.num_radii        = 4
+weyl_extraction.radii            = 40.0 60.0 80.0 100.0
+weyl_extraction.levels           = 1    1    0    0
+weyl_extraction.num_points_phi   = 24
+weyl_extraction.num_points_theta = 37
+weyl_extraction.num_modes = 12   # l = 2..4, m >= 0 (z -> -z symmetry: m < 0 follow)
+weyl_extraction.modes     = 2 0  2 1  2 2  3 0  3 1  3 2  3 3  4 0  4 1  4 2  4 3  4 4
+
+#################################################
+# Puncture tracking
+
+puncture_tracking.enabled = true
+puncture_tracking.level   = 4      # dx = 0.125
+
+#################################################
+# SAHF horizon finders (Gundlach fast flow, spectral), on every time step of
+# sahf.level, each from its last solution, recentred on it; after a failure
+# a finder restarts from the sphere f0. Output: stdout, and one line per found
+# horizon in sahf_output/horizon_<id>.dat (header lists the columns).
+# Horizons at t = 0: A (M = 1, a/M = 0.95) r ~ 0.16, B (M = 0.5) r ~ 0.23 (squashed by
+# its boost); kerrbin.out lists kerrbin's own horizon masses and spins for comparison.
+
+sahf.n     = 2
+sahf.level = 2                  # dt = 0.125
+sahf.x     = 128.0 104.0        # A, B (puncture positions at t = 0)
+sahf.y     = 128.0 128.0
+sahf.z     = 0.0   0.0          # on the symmetry plane
+sahf.f0    = 0.5   0.5          # initial radius (outside both horizons)
+sahf.t0    = 0.0   0.0          # start times
+sahf.tol      = 3e-2            # found when L2|Theta| < tol (1e-2: A lost at t ~ 6.3, its residual floor rose to 1e-2)
+sahf.max_iter = 40              # warm finds take 2-5 steps, a cold one ~20
+sahf.min_r    = 1e-4            # not found if the surface leaves [min_r, max_r]
+sahf.max_r    = 10.0
+# sahf.lmax = 12   sahf.nth = 20   sahf.nph = 40   sahf.ffA = 0.5   sahf.ffB = 1

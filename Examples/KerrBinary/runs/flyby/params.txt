@@ -1,0 +1,107 @@
+# KerrBinary flyby: kerrbin initial data (initial_data.kid, next to this file)
+# for a Schwarzschild hole B (M = 0.5) passing a Kerr hole A (M = 1, a/M = 0.9
+# along +z, at rest). Run from this directory; build in Examples/KerrBinary
+# (USE_KERRBIN = TRUE, kerrbin at KERRBIN_HOME).
+#
+# kerrbin par/flyby.par: A at (12, 0, 0), B at (-12, 0, 0) with
+# v = (0.27, 0.28, 0), retrograde w.r.t. A's spin; unbound (v_inf ~ 0.16),
+# periapsis ~11 at t ~ 50 (test-particle estimates). The .kid frame has its
+# origin at geometry.center. A is at rest but the total momentum is ~0.21, so
+# the pair drifts at ~0.14 towards +x +y (Newtonian track: B at r = 40 from the
+# centre at t ~ 120, r = 50 at t ~ 155, the domain edge at t ~ 200).
+
+amr.verbose = 1
+
+#################################################
+# Output
+# grteclyn.output_path = .
+
+# Restart from the t = 200 checkpoint (step 400); comment out to start from
+# the initial data. evolution.stop_time must be above 200 to evolve further.
+amr.restart = checkpoints/chk00400
+
+# Number of level-0 time steps between outputs (coarse dt = 0.5)
+amr.check_int = 20                 # every 10 M
+amr.plot_int  = 4                  # every 2 M
+
+amr.plot_vars        = chi lapse K Theta shift1 shift2
+amr.derive_plot_vars = constraints Weyl4
+
+#################################################
+# Initial data (kerrbin)
+
+kerrbin.kid_file = initial_data.kid   # relative to the run directory
+
+#################################################
+# Grid
+
+amr.n_cell           = 64 64 64
+geometry.prob_extent = 128 128 128
+# geometry.center defaults to the domain centre (64, 64, 64)
+
+# A's horizon (a/M = 0.9) has coordinate radius sqrt(M^2 - a^2)/2 = 0.22 in
+# kerrbin's quasi-isotropic coordinates: only ~7 finest cells at max_level 6.
+# Fine for tests; use max_level 7 (dx 1/64) for production.
+amr.max_level = 6   # dx: 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125
+
+# Regrid intervals in level steps for levels 0..max_level-1. Levels 2-5 all
+# regrid every 0.125 M; B peaks at v ~ 0.55 near periapsis, moving 0.07 M
+# (2 finest cells) between regrids.
+amr.regrid_int = 2 2 1 2 4 8
+
+tagging.threshold = 0.05
+
+# Puncture tagging: finest level covers r < finest_level_factor * m around each
+# BH, each coarser level 1.5x bigger. 1.0 (default 2.0) keeps the expensive
+# finest level small but still outside the horizons (r_H ~ 0.2-0.25).
+puncture_tagging.finest_level_factor = 1.0
+# puncture_tagging.level_separation  = 1.5
+
+# Small boxes suit a CPU. For GPUs use far larger (e.g. 128 / 32).
+amr.max_grid_size   = 32
+amr.blocking_factor = 8
+amr.n_error_buf     = 3
+
+#################################################
+# Boundaries
+
+geometry.is_periodic  = 0 0 0
+boundary.hi_condition = "SOMMERFELD_BC" "SOMMERFELD_BC" "SOMMERFELD_BC"
+boundary.lo_condition = "SOMMERFELD_BC" "SOMMERFELD_BC" "SOMMERFELD_BC"
+
+#################################################
+# Evolution
+
+# evolution.dt_multiplier = 0.25
+evolution.stop_time = 400.0    # periapsis ~ t = 50; the burst reaches r = 50 by ~ t = 100
+evolution.max_steps = -1
+
+# 4th order is cheaper and needs fewer ghost cells than 6th; fine for testing
+evolution.spatial_derivative_order = 4
+
+# Moving-puncture gauge
+gauge.shift_advec_coeff = 1.0
+# gauge.eta = 1.0   # ~ 1/M
+
+evolution.sigma = 1.0          # Kreiss-Oliger dissipation
+# evolution.nan_check = true
+
+#################################################
+# Weyl extraction, centred on the grid centre (the holes' initial midpoint).
+# The periapsis burst reaches r = 40-50 at t ~ 90-100; B crosses r = 40 at
+# t ~ 120 (see the top), so data after that are not clean.
+
+weyl_extraction.enabled          = true
+weyl_extraction.num_radii        = 2
+weyl_extraction.radii            = 40.0 50.0
+weyl_extraction.levels           = 1    1      # dx = 1
+weyl_extraction.num_points_phi   = 24
+weyl_extraction.num_points_theta = 37
+weyl_extraction.num_modes = 5
+weyl_extraction.modes     = 2 0  2 1  2 2  3 2  3 3
+
+#################################################
+# Puncture tracking
+
+puncture_tracking.enabled = true
+puncture_tracking.level   = 4      # dx = 0.125

@@ -1,0 +1,30 @@
+CPPFLAGS += -DUSE_KERRBIN
+
+# kerrbin initial data (.kid files written by build/kerr_binary). Only the evaluation part of kerrbin is
+# compiled: the solver, its operators and LAPACK are not needed.
+ifndef KERRBIN_HOME
+  KERRBIN_HOME := $(realpath $(GRTECLYN_HOME)/../kerrbin)
+endif
+
+ifeq (,$(wildcard $(KERRBIN_HOME)/src/evaluation/binary_evaluator.hpp))
+  $(error kerrbin not found in '$(KERRBIN_HOME)'. Please set KERRBIN_HOME to the kerrbin repository)
+endif
+
+KERRBIN_SOURCE = $(KERRBIN_HOME)/src
+
+CEXE_sources += bispherical.cpp \
+                chebyshev.cpp \
+                fold.cpp \
+                series.cpp \
+                conformal_metric.cpp \
+                boosted.cpp \
+                superposition.cpp \
+                kid_file.cpp \
+                binary_evaluator.cpp
+
+VPATH_LOCATIONS += $(addprefix $(KERRBIN_SOURCE)/, spectral equations holes io evaluation)
+# kerrbin includes its headers relative to src/ (e.g. "spectral/fold.hpp")
+INCLUDE_LOCATIONS += $(KERRBIN_SOURCE) $(GRTECLYN_HOME)/Source/InitialData/KerrBin
+
+# Appended to the stem of the executable name
+USERSuffix += .KerrBin

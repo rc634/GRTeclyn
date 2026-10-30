@@ -1,0 +1,5 @@
+HELLO
+
+THIS LETS VISIT PLOT TIME SERIES DATA
+ls -1 plots/plt*/Header > plots.visit
+

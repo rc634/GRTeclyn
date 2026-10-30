@@ -10,6 +10,11 @@
 #include "ParticleInterpolator.hpp"
 #include "PunctureTracker.hpp"
 
+#ifdef USE_SAHF
+#include "SAHFUnion.hpp"
+#include <memory>
+#endif
+
 /// A child of Chombo's AMR class to interface with tools which require
 /// access to the whole AMR hierarchy, and those of GRAmr
 /**
@@ -27,6 +32,10 @@ template <int num_punctures> class BHAmr : public GRAmr
     static constexpr int weyl_num_components = 2;
     ParticleInterpolator<weyl_num_components>
         m_weyl_interpolator; // interpolator object
+
+#ifdef USE_SAHF
+    std::unique_ptr<SAHFUnion> m_sahf; // made by the level on first use
+#endif
 
     BHAmr(amrex::LevelBld *a_levelbld) : GRAmr(a_levelbld)
     {

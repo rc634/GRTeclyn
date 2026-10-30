@@ -1,0 +1,21 @@
+CPPFLAGS += -DUSE_SAHF
+
+# SAHF spectral apparent horizon finder (host code), akv branch: the
+# approximate Killing vector spin needs LAPACK. SAHF's fake/ headers are not
+# used here; the finder talks to GRTeclyn's ParticleInterpolator.
+ifndef SAHF_HOME
+  SAHF_HOME := $(realpath $(GRTECLYN_HOME)/../SAHF)
+endif
+
+ifeq (,$(wildcard $(SAHF_HOME)/AKV.cpp))
+  $(error SAHF (akv branch) not found in '$(SAHF_HOME)'. Please set SAHF_HOME to the SAHF repository)
+endif
+
+CEXE_sources += NodalGrid.cpp AHSurface.cpp AHFinder.cpp AKV.cpp SAHFUnion.cpp
+
+VPATH_LOCATIONS += $(SAHF_HOME)
+INCLUDE_LOCATIONS += $(SAHF_HOME)
+
+# LAPACK library, e.g. SAHF_LAPACK="-L$OPENBLAS_LIB -lopenblas" (OpenBLAS module)
+SAHF_LAPACK ?= -llapack
+LIBRARIES += $(SAHF_LAPACK)

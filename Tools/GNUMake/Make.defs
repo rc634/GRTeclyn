@@ -10,3 +10,11 @@ ifeq ($(USE_TWOPUNCTURES),TRUE)
   $(info Loading $(GRTECLYN_HOME)/Tools/GNUMake/packages/Make.twopunctures...)
   include        $(GRTECLYN_HOME)/Tools/GNUMake/packages/Make.twopunctures
 endif
+ifeq ($(USE_KERRBIN),TRUE)
+  $(info Loading $(GRTECLYN_HOME)/Tools/GNUMake/packages/Make.kerrbin...)
+  include        $(GRTECLYN_HOME)/Tools/GNUMake/packages/Make.kerrbin
+endif
+ifeq ($(USE_SAHF),TRUE)
+  $(info Loading $(GRTECLYN_HOME)/Tools/GNUMake/packages/Make.sahf...)
+  include        $(GRTECLYN_HOME)/Tools/GNUMake/packages/Make.sahf
+endif

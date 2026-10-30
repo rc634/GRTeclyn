@@ -25,6 +25,9 @@ pout.*
 Weyl_integral*
 *ExtractionOut_*
 parameters_and_version.txt
+*.visit
+*.kid
+__pycache__/
 
 # Test output
 *.h5
