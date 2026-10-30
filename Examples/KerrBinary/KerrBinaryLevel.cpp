@@ -54,6 +54,7 @@ static SAHFParams sahf_params(int a_n)
     pp.query("ffA", p.ffA);
     pp.query("ffB", p.ffB);
     pp.query("tol", p.tol);
+    pp.query("tol_stall", p.tol_stall);
     pp.query("max_iter", p.maxit);
     pp.query("min_r", p.min_r);
     pp.query("max_r", p.max_r);

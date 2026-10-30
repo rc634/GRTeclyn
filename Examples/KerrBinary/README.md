@@ -30,6 +30,7 @@ to the parameter file:
 ```bash
 cd runs/flyby_sahf && ./run.sh                    # Mac: mpirun -n 4
 cd $CINECA_SCRATCH/KERR_PROJ/leo_kerr && sbatch jobscript.slurm   # Leonardo (see runs/leonardo.slurm)
+cd $CINECA_SCRATCH/KERR-PROJ-DCGP/leo_kerr && sbatch jobscript.slurm   # Leonardo CPU (runs/leonardo_dcgp.slurm)
 ```
 
 `kerrbin.kid_file` is the path of the `.kid` file, relative to the run

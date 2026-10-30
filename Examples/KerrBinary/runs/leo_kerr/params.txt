@@ -114,7 +114,9 @@ sahf.f0    = 0.6                # initial and reset radius, outside the horizon
 sahf.t0    = 0.0
 sahf.tol      = 2e-4            # found when rms Theta < tol (sqrt(int Theta^2 dA / area)); also
                                 # measures the dx 1/64 floor (rmsTheta column)
-sahf.max_iter = 60              # warm finds take 1-5 steps, a cold one ~20-30
+sahf.tol_stall = 2e-3           # also found when the flow stalls on the truncation floor (rms
+                                # down < 1% in 3 steps) above tol but below tol_stall
+sahf.max_iter = 60              # warm finds ~15 steps (to the floor), a cold one ~40
 sahf.min_r    = 1e-4
 sahf.max_r    = 10.0
 # sahf.lmax = 12   sahf.nth = 20   sahf.nph = 40   sahf.ffA = 0.5   sahf.ffB = 1
