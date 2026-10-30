@@ -142,7 +142,7 @@ static void sahf_write(const SAHFUnion &a_sahf, amrex::Real a_time,
             file.write_header_line(
                 {"x", "y", "z", "r_mean", "area", "M_A", "M_T_rot", "chi_rot",
                  "M_T_akv", "chi_akv", "Px", "Py", "Pz", "Sx_rot", "Sy_rot",
-                 "Sz_rot", "Sx_akv", "Sy_akv", "Sz_akv", "L2Theta", "steps"});
+                 "Sz_rot", "Sx_akv", "Sy_akv", "Sz_akv", "rmsTheta", "steps"});
         }
         if (h.found)
         {

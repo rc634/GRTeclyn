@@ -112,7 +112,8 @@ sahf.y     = 512.0
 sahf.z     = 0.0                # on the symmetry plane
 sahf.f0    = 0.6                # initial and reset radius, outside the horizon
 sahf.t0    = 0.0
-sahf.tol      = 1e-3            # found when L2|Theta| < tol; also measures the dx 1/64 floor (L2Theta column)
+sahf.tol      = 2e-4            # found when rms Theta < tol (sqrt(int Theta^2 dA / area)); also
+                                # measures the dx 1/64 floor (rmsTheta column)
 sahf.max_iter = 60              # warm finds take 1-5 steps, a cold one ~20-30
 sahf.min_r    = 1e-4
 sahf.max_r    = 10.0

@@ -116,7 +116,8 @@ sahf.y     = 512.0 512.0
 sahf.z     = 0.0   0.0          # on the symmetry plane
 sahf.f0    = 0.6   0.6          # initial and reset radius: outside both horizons (B's -> 0.42)
 sahf.t0    = 0.0   0.0
-sahf.tol      = 3e-3            # found when L2|Theta| < tol: above the expected floor (a lost B is lost for good)
+sahf.tol      = 5e-4            # found when rms Theta < tol (sqrt(int Theta^2 dA / area)): above the
+                                # expected floor at dx 1/64 (a lost B is lost for good)
 sahf.max_iter = 60              # warm finds take 1-5 steps, a cold one ~20-30
 sahf.min_r    = 1e-4
 sahf.max_r    = 10.0

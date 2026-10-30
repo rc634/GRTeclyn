@@ -254,7 +254,7 @@ def read_table(path, ncols):
 
 HORIZON_COLUMNS = ["t", "x", "y", "z", "r_mean", "area", "M_A", "M_T_rot",
                    "chi_rot", "M_T_akv", "chi_akv", "Px", "Py", "Pz", "Sx_rot",
-                   "Sy_rot", "Sz_rot", "Sx_akv", "Sy_akv", "Sz_akv", "L2Theta",
+                   "Sy_rot", "Sz_rot", "Sx_akv", "Sy_akv", "Sz_akv", "rmsTheta",
                    "steps"]
 
 
