@@ -123,8 +123,10 @@ sahf.y     = 128.0 128.0
 sahf.z     = 0.0   0.0          # on the symmetry plane
 sahf.f0    = 0.5   0.5          # initial radius (outside both horizons)
 sahf.t0    = 0.0   0.0          # start times
-sahf.tol      = 5e-3            # found when rms Theta < tol (2e-3: A lost at t ~ 6.3, its residual floor rose to 2e-3)
-sahf.max_iter = 40              # warm finds take 2-5 steps, a cold one ~20
+sahf.tol      = 1e-2            # found when rms Theta (sqrt(int Theta^2 dA / area)) < tol once the
+                                # flow stalls on the truncation floor (down < 1% in 3 steps) or
+                                # after max_iter steps (dx 1/32: floor up to 2e-3 by t ~ 6.3)
+sahf.max_iter = 60              # warm finds ~10-25 steps (to the floor), a cold one ~40
 sahf.min_r    = 1e-4            # not found if the surface leaves [min_r, max_r]
 sahf.max_r    = 10.0
 # sahf.lmax = 12   sahf.nth = 20   sahf.nph = 40   sahf.ffA = 0.5   sahf.ffB = 1

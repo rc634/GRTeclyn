@@ -6,7 +6,7 @@
 #
 # Changes from flyby_sahf: finest dx 1/64 (was 1/32), finest levels 1.5x bigger, outer
 # boundary 512 from A (was 128), extraction at 40-160 all on dx 1, GPU box sizes, SAHF
-# tolerance 1e-2. Cells across the horizons (diameter / dx): A ~20 at t = 0 (r 0.156),
+# tol 1e-2. Cells across the horizons (diameter / dx): A ~20 at t = 0 (r 0.156),
 # ~35 by t ~ 6 (r 0.27); B ~29 at t = 0, ~54 once settled (r 0.42).
 #
 # Leonardo: cd $CINECA_SCRATCH/KERR_PROJ/leo_flyby && sbatch jobscript.slurm (1 node,
@@ -116,11 +116,10 @@ sahf.y     = 512.0 512.0
 sahf.z     = 0.0   0.0          # on the symmetry plane
 sahf.f0    = 0.6   0.6          # initial and reset radius: outside both horizons (B's -> 0.42)
 sahf.t0    = 0.0   0.0
-sahf.tol      = 5e-4            # found when rms Theta < tol (sqrt(int Theta^2 dA / area)): above the
-                                # expected floor at dx 1/64 (a lost B is lost for good)
-sahf.tol_stall = 2e-3           # also found when the flow stalls on the truncation floor (rms
-                                # down < 1% in 3 steps) above tol but below tol_stall
-sahf.max_iter = 60              # warm finds ~15 steps (to the floor), a cold one ~40
+sahf.tol      = 1e-2            # found when rms Theta (sqrt(int Theta^2 dA / area)) < tol once the
+                                # flow stalls on the truncation floor (down < 1% in 3 steps) or
+                                # after max_iter steps (dx 1/64: floor 2e-4, up to 2.06e-3 at t ~ 9)
+sahf.max_iter = 60              # warm finds ~10-25 steps (to the floor), a cold one ~40
 sahf.min_r    = 1e-4
 sahf.max_r    = 10.0
 # sahf.lmax = 12   sahf.nth = 20   sahf.nph = 40   sahf.ffA = 0.5   sahf.ffB = 1
