@@ -5,17 +5,16 @@
 # spin drift at dx 1/64, junk radiation, and the speed to scale leo_flyby's run time from.
 # Cells across A's horizon (diameter / dx): ~20 at t = 0 (r 0.156), ~35 by t ~ 6 (r 0.27).
 #
-# Leonardo: cd runs/leo_kerr && sbatch ../leonardo.slurm  (1 node, 4 A100), ~1-3 h.
-# A first check: sbatch --qos=boost_qos_dbg --time=00:30:00 ../leonardo.slurm
+# Leonardo: cd $CINECA_SCRATCH/KERR_PROJ/leo_kerr && sbatch jobscript.slurm (1 node,
+# 4 A100), ~1-3 h. A first check: sbatch --qos=boost_qos_dbg --time=00:30:00 jobscript.slurm
 
 amr.verbose = 1
 amrex.use_gpu_aware_mpi = 1
 
 #################################################
-# Output (rank r's stdout: pout/pout.r)
+# Output in the run directory (plots, checkpoints, pout/pout.r, extraction_data,
+# punctures_output, sahf_output). Restart: RESTART=chk00040 sbatch jobscript.slurm
 # grteclyn.output_path = .
-
-# amr.restart = checkpoints/chk00100   # continue from t = 100
 
 # Number of level-0 time steps between outputs (coarse dt = 1)
 amr.check_int = 40                 # every 40 M, ~11 GB each

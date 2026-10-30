@@ -9,17 +9,16 @@
 # tolerance 1e-2. Cells across the horizons (diameter / dx): A ~20 at t = 0 (r 0.156),
 # ~35 by t ~ 6 (r 0.27); B ~29 at t = 0, ~54 once settled (r 0.42).
 #
-# Leonardo: cd runs/leo_flyby && sbatch ../leonardo.slurm  (1 node, 4 A100). Estimated
-# 4-12 h to t = 320; run leo_kerr first and scale from its speed.
+# Leonardo: cd $CINECA_SCRATCH/KERR_PROJ/leo_flyby && sbatch jobscript.slurm (1 node,
+# 4 A100). Estimated 4-12 h to t = 320: run leo_kerr first and scale from its speed.
 
 amr.verbose = 1
 amrex.use_gpu_aware_mpi = 1
 
 #################################################
-# Output (rank r's stdout: pout/pout.r)
+# Output in the run directory (plots, checkpoints, pout/pout.r, extraction_data,
+# punctures_output, sahf_output). Restart: RESTART=chk00040 sbatch jobscript.slurm
 # grteclyn.output_path = .
-
-# amr.restart = checkpoints/chk00100   # continue from t = 100
 
 # Number of level-0 time steps between outputs (coarse dt = 1)
 amr.check_int = 40                 # every 40 M, ~11 GB each (delete old ones)
