@@ -23,8 +23,10 @@
 #include <omp.h>
 #endif
 
+#include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <string>
 
 #ifndef GRTECLYN_VERSION
 #define GRTECLYN_VERSION "unknown"
@@ -46,6 +48,32 @@
     return false;
 }
 
+/// Every rank's stdout goes to <grteclyn.output_path>/pout/pout.<rank>,
+/// appended so that a restart continues it (stderr is unchanged);
+/// grteclyn.pout = false keeps stdout on the terminal
+inline void redirect_stdout_to_pout()
+{
+    GRParmParse pp("grteclyn");
+    bool pout = true;
+    pp.queryAdd("pout", pout);
+    if (!pout)
+    {
+        return;
+    }
+    std::string output_path = ".";
+    pp.query("output_path", output_path);
+    const std::string dir = output_path + "/pout";
+    FilesystemTools::ensure_directory_exists(dir);
+    const std::string file =
+        dir + "/pout." + std::to_string(amrex::ParallelDescriptor::MyProc());
+    std::fflush(stdout);
+    if (std::freopen(file.c_str(), "a", stdout) == nullptr)
+    {
+        amrex::Abort("cannot open " + file);
+    }
+    std::setvbuf(stdout, nullptr, _IOLBF, BUFSIZ); // for tail -f
+}
+
 // NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
 /// This function calls MPI_Init
 void mainSetup(int argc, char *argv[]);
@@ -59,6 +87,11 @@ void mainSetup(int argc, char *argv[])
     // NOLINTNEXTLINE(bugprone-casting-through-void)
     amrex::Initialize(
         argc, argv, std::function<void()>(SimulationParameters::check_params));
+
+    if (!just_check_params())
+    {
+        redirect_stdout_to_pout();
+    }
 
     if (amrex::ParallelDescriptor::IOProcessor())
     {
