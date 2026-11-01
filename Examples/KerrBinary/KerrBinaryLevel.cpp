@@ -53,6 +53,7 @@ static SAHFParams sahf_params(int a_n)
     pp.query("nph", p.nph);
     pp.query("ffA", p.ffA);
     pp.query("ffB", p.ffB);
+    pp.query("adaptive_step", p.adaptive_step);
     pp.query("tol", p.tol);
     pp.query("max_iter", p.maxit);
     pp.query("min_r", p.min_r);

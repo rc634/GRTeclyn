@@ -192,10 +192,10 @@ class KerrBinInitialData
         const Vec3 v    = a_id.frame.rotate(A.velocity);
         if (A.spin == 0.0)
         {
-            return boosted_schwarzschild(A.mass, v, A.position);
+            return boosted_schwarzschild(A.mass, v, A.position, A.slice);
         }
         return boosted_kerr(A.mass, A.spin, a_id.frame.rotate(A.axis), v,
-                            A.position);
+                            A.position, A.slice);
     }
 
     static std::array<amrex::Real, AMREX_SPACEDIM> grid_center()

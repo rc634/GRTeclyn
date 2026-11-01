@@ -6,23 +6,16 @@ ifndef KERRBIN_HOME
   KERRBIN_HOME := $(realpath $(GRTECLYN_HOME)/../kerrbin)
 endif
 
-ifeq (,$(wildcard $(KERRBIN_HOME)/src/evaluation/binary_evaluator.hpp))
-  $(error kerrbin not found in '$(KERRBIN_HOME)'. Please set KERRBIN_HOME to the kerrbin repository)
+ifeq (,$(wildcard $(KERRBIN_HOME)/evaluation.mk))
+  $(error kerrbin (with evaluation.mk) not found in '$(KERRBIN_HOME)'. Please set KERRBIN_HOME to the kerrbin repository)
 endif
 
 KERRBIN_SOURCE = $(KERRBIN_HOME)/src
 
-CEXE_sources += bispherical.cpp \
-                chebyshev.cpp \
-                fold.cpp \
-                series.cpp \
-                conformal_metric.cpp \
-                boosted.cpp \
-                superposition.cpp \
-                kid_file.cpp \
-                binary_evaluator.cpp
-
-VPATH_LOCATIONS += $(addprefix $(KERRBIN_SOURCE)/, spectral equations holes io evaluation)
+# kerrbin lists its own evaluation sources and folders (new slices and interior fills need no change here)
+include $(KERRBIN_HOME)/evaluation.mk
+CEXE_sources += $(KERRBIN_EVAL_SOURCES)
+VPATH_LOCATIONS += $(addprefix $(KERRBIN_SOURCE)/, $(KERRBIN_EVAL_DIRS))
 # kerrbin includes its headers relative to src/ (e.g. "spectral/fold.hpp")
 INCLUDE_LOCATIONS += $(KERRBIN_SOURCE) $(GRTECLYN_HOME)/Source/InitialData/KerrBin
 
