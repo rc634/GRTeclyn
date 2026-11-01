@@ -1,0 +1,64 @@
+# spin999 binary test: leo_flyby_2 layout (A M 1 at rest, B M 0.5 Schwarzschild at -24 moving at (0.27, 0.28)),
+# A at chi 0.999. kerrbin data from initial_data.kid. Cheap grid for short (t ~ 30) comparisons.
+# @NOTE@
+amr.verbose = 1
+
+amr.check_int = 4                  # level-0 steps (coarse dt 0.5): every 2 M
+amr.plot_int  = 4
+amr.plot_vars        = chi lapse K Theta shift1 shift2
+amr.derive_plot_vars = constraints
+
+use_kerrbin      = true
+kerrbin.kid_file = initial_data.kid
+
+# Grid: coarsest dx 2 to +-128 from A (z >= 0 half), finest dx 2 / 2^max_level
+amr.n_cell           = 128 128 64
+geometry.prob_extent = 256 256 128
+geometry.center      = 128 128 0
+amr.max_level = @MAXLEVEL@
+# levels >= 2 regrid every 0.125 M (B moves ~3 finest cells at dx 1/64)
+amr.regrid_int = 2 2 1 2 4 8 16 32
+tagging.threshold = 0.05
+puncture_tagging.finest_level_factor = @FLF@
+amr.max_grid_size   = 32
+amr.blocking_factor = 16
+amr.n_error_buf     = 4
+amr.use_efficient_regrid = 1
+
+geometry.is_periodic  = 0 0 0
+boundary.hi_condition = "SOMMERFELD_BC" "SOMMERFELD_BC" "SOMMERFELD_BC"
+boundary.lo_condition = "SOMMERFELD_BC" "SOMMERFELD_BC" "REFLECTIVE_BC"
+
+evolution.stop_time = @STOP@
+evolution.max_steps = -1
+evolution.spatial_derivative_order = 4
+evolution.sigma = 1.0
+
+gauge.shift_advec_coeff = 1.0
+gauge.eta = @ETA@
+@GAUGE_EXTRA@
+
+# small-radius extraction about A (B stays beyond r ~ 18 until t ~ 25): junk measure
+weyl_extraction.enabled          = true
+weyl_extraction.num_radii        = 3
+weyl_extraction.radii            = 8.0 12.0 16.0
+weyl_extraction.levels           = 3   3    3
+weyl_extraction.num_points_phi   = 24
+weyl_extraction.num_points_theta = 37
+weyl_extraction.num_modes = 12
+weyl_extraction.modes     = 2 0  2 1  2 2  3 0  3 1  3 2  3 3  4 0  4 1  4 2  4 3  4 4
+
+puncture_tracking.enabled = true
+puncture_tracking.level   = 5
+
+sahf.n     = 2
+sahf.level = 2                  # dt = 0.125
+sahf.x     = 128.0 104.0
+sahf.y     = 128.0 128.0
+sahf.z     = 0.0   0.0
+sahf.f0    = @F0@ 0.6
+sahf.t0    = 0.0   0.0
+sahf.tol      = 1e-2
+sahf.max_iter = 60
+sahf.min_r    = 1e-4
+sahf.max_r    = 10.0

@@ -47,3 +47,11 @@ All code must build and run correctly with `USE_CUDA=TRUE`, even though it is on
 - Leonardo runs: `Examples/KerrBinary/runs/leo_kerr` (A alone) and `leo_flyby`, same grid (dx 1/64 finest, boundary 512, extraction 40-160 at dx 1), `runs/leonardo.slurm` (account INF26_teongrav, `module restore kerrbin`).
 - Leonardo setup (rcroft00): `~/amrex` (same commit as the Mac) with `Tools/GNUMake/Make.local-pre` making GPU builds the default (gnu, MPI, CUDA arch 80, OpenMP, `SAHF_LAPACK = -lopenblas`); `AMREX_HOME` in `~/.bashrc`; `~/kerr-proj/{GRTeclyn,SAHF,kerrbin}`; module collection `kerrbin` = gcc/12.2.0 cuda/12.2 openmpi/4.1.6--gcc--12.2.0-cuda-12.2 openblas/0.3.26--gcc--12.2.0. Runs in `$CINECA_SCRATCH/KERR_PROJ/` (the executable, run directories with `jobscript.slurm`). Login: `login01-ext.leonardo.cineca.it` (the known host key).
 - Leonardo DCGP (CPU, 2 x 56-core Sapphire Rapids per node): `runs/leonardo_dcgp.slurm` (account INF26_teongrav_0, 16 ranks x 7 threads per node, `module restore kerrbin_dcgp` = gcc, the same OpenMPI and OpenBLAS, no CUDA); build `make -j 16 USE_CUDA=FALSE XTRA_CXXFLAGS=-march=sapphirerapids`; params as on Booster but `amr.max_grid_size = 32` and no `amrex.use_gpu_aware_mpi`; runs in `$CINECA_SCRATCH/KERR-PROJ-DCGP/`. leo_kerr: 15.8 M/h on 1 node, 27.5 M/h on 2 (1.74x for 15% more core hours).
+- The DCGP debug QOS (`dcgp_qos_dbg`, 30 min, 2 nodes) is billed like normal jobs (UsageFactor 1, 112 core-h per
+  node-hour). Check cost before submitting.
+- chi >= 0.999 evolutions (2026-11-01; details in kerrbin's CLAUDE.md, "Evolutions of chi 0.999 data on Leonardo";
+  tools in `Examples/KerrBinary/runs/spin999/`):
+  - Use `gauge.lapse_power = 2` (d_t alpha = -2 alpha^2 K) and finest dx <= 1/128 M.
+  - Under 1+log the horizon dips to r ~ 0.07 at t ~ 6-8 and needs 1/256.
+  - `PunctureTagger` rejects `finest_level_factor < 1` (sized for an isotropic M/2 horizon); an LES Kerr horizon
+    (r_+/4) only needs ~0.55. Relaxing the check is a candidate change, not done.
